@@ -1,0 +1,2 @@
+[console_scripts]
+shareclaw = shareclaw.cli:main

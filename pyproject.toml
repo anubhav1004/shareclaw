@@ -1,0 +1,14 @@
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "shareclaw"
+version = "0.1.0"
+description = "Shared memory + self-improving loops for multi-agent AI systems"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.8"
+
+[project.scripts]
+shareclaw = "shareclaw.cli:main"
