@@ -2,6 +2,15 @@
   <img src="assets/banner.png" alt="ShareClaw" width="100%">
 </p>
 
+
+<p align="center">
+  <a href="https://github.com/anubhav1004/shareclaw/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT License"></a>
+  <a href="https://github.com/anubhav1004/shareclaw"><img src="https://img.shields.io/badge/python-3.8+-green.svg" alt="Python 3.8+"></a>
+  <a href="https://github.com/anubhav1004/shareclaw"><img src="https://img.shields.io/badge/dependencies-zero-brightgreen.svg" alt="Zero Dependencies"></a>
+  <a href="https://github.com/anubhav1004/shareclaw"><img src="https://img.shields.io/badge/tests-46%20passing-brightgreen.svg" alt="46 Tests Passing"></a>
+  <a href="https://github.com/anubhav1004/shareclaw"><img src="https://img.shields.io/github/stars/anubhav1004/shareclaw?style=social" alt="GitHub Stars"></a>
+</p>
+
 # 🦞🧠 ShareClaw
 
 > *It's March 2026. You have two AI agents — Heisenberg generates TikTok content, Rutherford analyzes what performs. They've been running for a week. Heisenberg just posted a video that got 5x more views than anything before. How? Because Rutherford wrote in the shared brain that ragebait hooks outperform motivational ones by 2x — and Heisenberg read that before creating the next batch. Neither agent was told this by a human. They figured it out together.*
@@ -415,3 +424,44 @@ ALERT → humans get notified
 ```
 
 See [`protocols/events.md`](protocols/events.md).
+
+---
+
+## ❓ FAQ
+
+<details>
+<summary><b>How is this different from just saving state to a JSON file?</b></summary>
+
+ShareClaw adds structure on top of raw state: targets with deadlines, the advance/discard loop, introspection questions that force analysis, shared skills with version history, and auto-optimization (auto_target, auto_advance, winning_combo). A JSON file stores data. ShareClaw stores knowledge.
+</details>
+
+<details>
+<summary><b>How is this different from CrewAI / AutoGen / LangGraph?</b></summary>
+
+Those are agent frameworks — they define how agents communicate within a session. ShareClaw is a memory layer — it persists what agents learned across sessions and across different frameworks. You can use ShareClaw inside CrewAI, AutoGen, or LangGraph. See <a href="docs/integrations.md">integrations</a>.
+</details>
+
+<details>
+<summary><b>Does this work with GPT / Claude / Gemini / local models?</b></summary>
+
+Yes. ShareClaw is just Python + JSON files. Any LLM that can read files can use <code>brain.context()</code> to get the full shared state as a string. Paste it into any system prompt.
+</details>
+
+<details>
+<summary><b>How many agents can share one brain?</b></summary>
+
+No limit. We've tested with 2 agents (Heisenberg + Rutherford) in production. The Brain uses file-based JSON storage, so any number of agents can read/write. For high-concurrency setups, consider adding file locking.
+</details>
+
+<details>
+<summary><b>What happens if two agents write at the same time?</b></summary>
+
+Currently last-write-wins. For production use with many concurrent agents, wrap Brain operations in a file lock. We plan to add built-in locking in v0.2.
+</details>
+
+<details>
+<summary><b>Can I use this without pip install — just the markdown files?</b></summary>
+
+Yes. Copy <code>templates/shared_brain.md</code> and <code>templates/execution.md</code> into your project. Tell your agents to read/write them. That's the simplest setup — no Python needed.
+</details>
+

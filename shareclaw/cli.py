@@ -82,13 +82,27 @@ Examples:
         parser.print_help()
         return
 
-    brain = Brain(args.project if args.command == "init" else "default")
-
+    # Load existing brain or create new
     if args.command == "init":
         brain = Brain(args.project)
+    else:
+        from pathlib import Path
+        brain_path = Path.cwd() / ".shareclaw" / "brain.json"
+        if brain_path.exists():
+            import json
+            with open(brain_path) as f:
+                state = json.load(f)
+            brain = Brain(state.get("project", "default"))
+        else:
+            print("⚠️  No ShareClaw brain found. Run: shareclaw init <project-name>")
+            return
+        
+
+    if args.command == "init":
         brain._save()
         print(f"🧠 ShareClaw initialized: {args.project}")
         print(f"   State: {brain.brain_file}")
+        print(f"   Run 'shareclaw target <your-goal>' to set your first target")
 
     elif args.command == "target":
         brain.set_target(args.target, args.deadline)

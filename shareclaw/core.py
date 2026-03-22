@@ -68,6 +68,12 @@ class Brain:
 
         self.state = self._load()
 
+    def __repr__(self) -> str:
+        s = self.state
+        return (f"Brain('{s['project']}', cycle={s['cycle']}, "
+                f"wins={len(s['works'])}, fails={len(s['fails'])}, "
+                f"metric='{s.get('metric', 'score')}')")
+
     def _load(self) -> dict:
         if self.brain_file.exists():
             with open(self.brain_file) as f:
