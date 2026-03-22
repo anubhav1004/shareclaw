@@ -161,6 +161,62 @@ Set specific numeric targets. Keep what works, discard what doesn't.
 
 That's it. Your agents now share a brain.
 
+## 🎬 Demo
+
+```
+$ shareclaw init tiktok-growth
+🧠 ShareClaw initialized: tiktok-growth
+
+$ shareclaw target "Get 500 views per post"
+🎯 Cycle 1 target: Get 500 views per post
+
+$ shareclaw learn "Ragebait hooks get 2x views" "cycle 1 data"
+📗 Learned: Ragebait hooks get 2x views
+
+$ shareclaw fail "Long motivational text" "200 views, 0 engagement"
+📕 Failed: Long motivational text — 200 views, 0 engagement
+
+$ shareclaw cycle hook_style ragebait 200 450 advance "2.25x improvement"
+✅ Cycle 1: hook_style=ragebait → 200→450 (+125.0%) [advance]
+
+$ shareclaw cycle format vlog 450 680 advance "vlog + ragebait combo"
+✅ Cycle 1: format=vlog → 450→680 (+51.1%) [advance]
+
+$ shareclaw cycle audio chopin 680 750 advance "chopin audio works"
+✅ Cycle 1: audio=chopin → 680→750 (+10.3%) [advance]
+
+$ shareclaw status
+
+=======================================================
+  🧠 SHARECLAW — tiktok-growth
+  Cycle 1 | 1 learnings | 1 failures | 0 skills
+=======================================================
+
+  🎯 Target: Get 500 views per post [active]
+
+  📈 Progress:
+      1 │ ██████████████████ 450
+      2 │ ███████████████████████████ 680
+      3 │ ██████████████████████████████ 750
+
+  📗 What Works:
+    ✓ Ragebait hooks get 2x views
+
+  📕 What Doesn't:
+    ✗ Long motivational text — 200 views, 0 engagement
+
+  🔄 Recent Cycles:
+    ✅ #1: hook_style=ragebait → 200→450 (+125.0%)
+    ✅ #1: format=vlog → 450→680 (+51.1%)
+    ✅ #1: audio=chopin → 680→750 (+10.3%)
+
+=======================================================
+```
+
+*3 cycles. 200 → 750. The agents figured out ragebait + vlog + chopin = 3.75x improvement.*
+
+
+
 ---
 
 ## For OpenClaw users
