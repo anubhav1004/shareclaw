@@ -2,7 +2,7 @@
   <img src="assets/banner.png" alt="ShareClaw" width="100%">
 </p>
 
-# 🧠 ShareClaw
+# 🦞🧠 ShareClaw
 
 > *It's March 2026. You have two AI agents — Heisenberg generates TikTok content, Rutherford analyzes what performs. They've been running for a week. Heisenberg just posted a video that got 5x more views than anything before. How? Because Rutherford wrote in the shared brain that ragebait hooks outperform motivational ones by 2x — and Heisenberg read that before creating the next batch. Neither agent was told this by a human. They figured it out together.*
 
