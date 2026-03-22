@@ -170,10 +170,10 @@ That's it. Your agents now share a brain.
 ## 🎬 Demo
 
 <p align="center">
-  <img src="assets/demo_terminal.png" alt="ShareClaw Demo" width="700">
+  <img src="assets/demo.svg" alt="ShareClaw Demo" width="700">
 </p>
 
-*3 cycles. 200 → 520 DAU. The agents found: 3-step onboarding + freemium pricing + daily emails. No human told them.*
+*3 cycles. 200 → 520 DAU. Agents found the winning combo autonomously. No human told them what to try.*
 
 
 
