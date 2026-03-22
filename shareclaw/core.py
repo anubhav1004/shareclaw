@@ -1,19 +1,24 @@
 """
 ShareClaw Core — The shared brain for multi-agent AI systems.
 
-One file. Under 500 lines. Everything you need.
+One file. Works for ANY task. The Brain auto-adapts to what you're optimizing.
 
 Usage:
     from shareclaw import Brain
 
-    brain = Brain("my-project")
-    brain.set_target("Get 1000 views per post")
-    brain.log_cycle(variable="hook_style", variant="ragebait", before=200, after=450, status="advance")
-    brain.learn("Ragebait hooks get 2x more views", evidence="cycle 1: 450 vs 200")
-    brain.fail("Long motivational text", reason="200 views avg, no engagement")
-    brain.add_skill("ragebait-hooks", formula="...", examples=[...])
-    brain.handoff("agent-b", task="Post these videos", files=["vid1.mp4"])
-    brain.report()  # prints beautiful status report
+    # Works for anything — social media, ML training, sales, code quality, anything with a metric
+    brain = Brain("my-project",
+        objective="Maximize daily active users",
+        metric="DAU",
+        variables=["onboarding_flow", "push_notification_timing", "pricing_tier"],
+    )
+
+    brain.set_target(500)  # target DAU = 500
+    brain.log_cycle(variable="onboarding_flow", variant="3-step", before=200, after=350, status="advance")
+    brain.learn("3-step onboarding converts 2x better", evidence="cycle 1: 350 vs 200 DAU")
+    brain.fail("5-step onboarding", reason="80% drop-off at step 3")
+    brain.report()  # beautiful ASCII report with progress chart
+    brain.context()  # paste into any LLM for instant shared memory
 """
 
 import json
@@ -27,8 +32,28 @@ from typing import Optional
 class Brain:
     """The shared brain. All agents read and write to this."""
 
-    def __init__(self, project_name: str, path: Optional[str] = None):
+    def __init__(self, project_name: str, path: Optional[str] = None,
+                 objective: str = "", metric: str = "score",
+                 variables: list = None, wait_time: str = "6 hours",
+                 step_size: float = 1.5):
+        """
+        Initialize a shared brain for any optimization task.
+
+        Args:
+            project_name: Name of your project
+            objective: What you're trying to achieve (e.g., "Maximize DAU", "Reduce bug count")
+            metric: The number you're tracking (e.g., "DAU", "views", "accuracy", "revenue")
+            variables: List of variables to test, in priority order
+            wait_time: How long to wait between measurements (e.g., "6 hours", "1 day")
+            step_size: Multiply target by this when advancing (1.5 = 50% higher each level)
+        """
         self.project = project_name
+        self.objective = objective
+        self.metric = metric
+        self.variables = variables or []
+        self.wait_time = wait_time
+        self.step_size = step_size
+
         self.path = Path(path) if path else Path.cwd() / ".shareclaw"
         self.path.mkdir(parents=True, exist_ok=True)
 
@@ -49,6 +74,11 @@ class Brain:
                 return json.load(f)
         return {
             "project": self.project,
+            "objective": self.objective,
+            "metric": self.metric,
+            "variables": self.variables,
+            "wait_time": self.wait_time,
+            "step_size": self.step_size,
             "created_at": self._now(),
             "cycle": 0,
             "current_target": None,
@@ -59,6 +89,7 @@ class Brain:
             "skills": [],
             "milestones": [],
             "agents": {},
+            "variable_results": {},  # tracks which variant won for each variable
         }
 
     def _save(self):
@@ -103,6 +134,45 @@ class Brain:
             self.state["current_target"]["reason"] = reason
             self._save()
             print(f"❌ Target missed: {reason}")
+
+    def auto_target(self, current_value: float):
+        """Automatically set the next target based on performance history.
+        Uses step_size multiplier — if you're at 200 and step_size is 1.5, target = 300."""
+        target_value = round(current_value * self.state.get("step_size", 1.5))
+        metric = self.state.get("metric", "score")
+        self.set_target(f"{metric} ≥ {target_value} (current: {current_value})")
+        return target_value
+
+    def auto_advance(self, variable: str, variant: str, before: float, after: float):
+        """Automatically decide advance or discard based on metric change."""
+        status = "advance" if after > before else "discard"
+        delta_pct = round((after - before) / max(before, 1) * 100, 1)
+        desc = f"{variant} {'improved' if status == 'advance' else 'worsened'} {self.state.get('metric', 'score')} by {delta_pct}%"
+        self.log_cycle(variable, variant, before, after, status, desc)
+
+        if status == "advance":
+            self.state.setdefault("variable_results", {})[variable] = {
+                "winner": variant, "value": after, "cycle": self.state["cycle"]}
+            self.learn(f"{variable}={variant} improves {self.state.get('metric', 'score')}",
+                       evidence=f"{before}→{after} ({delta_pct:+.1f}%)")
+        else:
+            self.fail(f"{variable}={variant}",
+                      reason=f"{self.state.get('metric', 'score')} went {before}→{after} ({delta_pct:+.1f}%)")
+        self._save()
+        return status
+
+    def next_variable(self) -> tuple:
+        """Suggest the next variable and variant to test based on what hasn't been tested yet."""
+        tested = self.state.get("variable_results", {})
+        variables = self.state.get("variables", [])
+        for var in variables:
+            if var not in tested:
+                return var, "first variant"
+        return None, None  # all variables tested
+
+    def winning_combo(self) -> dict:
+        """Return the current best combination of all tested variables."""
+        return self.state.get("variable_results", {})
 
     # ── Learning ─────────────────────────────────────────────────
 
@@ -304,9 +374,13 @@ class Brain:
         s = self.state
         lines = []
         lines.append(f"\n{'='*55}")
-        lines.append(f"  🧠 SHARECLAW — {s['project']}")
-        lines.append(f"  Cycle {s['cycle']} | {len(s['works'])} learnings | "
-                      f"{len(s['fails'])} failures | {len(s.get('skills', []))} skills")
+        lines.append(f"  🦞🧠 SHARECLAW — {s['project']}")
+        metric = s.get('metric', 'score')
+        objective = s.get('objective', '')
+        lines.append(f"  Metric: {metric} | Cycle {s['cycle']} | "
+                      f"{len(s['works'])} wins | {len(s['fails'])} fails")
+        if objective:
+            lines.append(f"  Objective: {objective}")
         lines.append(f"{'='*55}\n")
 
         # Target
