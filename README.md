@@ -325,3 +325,81 @@ MIT — use it for anything.
 ---
 
 > *"Two agents sharing a brain is worth ten agents working alone."*
+
+---
+
+## 📋 Full Protocol Suite
+
+ShareClaw isn't just shared memory. It's a complete multi-agent collaboration framework:
+
+| Protocol | File | What It Does |
+|----------|------|-------------|
+| **Shared Brain** | `shared_brain.md` | Living state — targets, learnings, cycle log |
+| **Shared Skills** | [`protocols/shared_skills.md`](protocols/shared_skills.md) | Agents teach each other capabilities |
+| **Agent Handoff** | [`protocols/handoff.md`](protocols/handoff.md) | Clean work passing between agents |
+| **Task Queue** | [`protocols/task_queue.md`](protocols/task_queue.md) | Shared todo list any agent can pick up |
+| **Consensus** | [`protocols/consensus.md`](protocols/consensus.md) | Multi-agent voting on decisions |
+| **Event System** | [`protocols/events.md`](protocols/events.md) | Agents publish/subscribe to events |
+| **Execution Loop** | `execution.md` | Autonomous self-improving loop |
+
+### Shared Skills — agents teaching agents
+
+When Agent A figures out that ragebait hooks get 2x more views, it writes a skill file. Agent B reads it and immediately knows the formula, the examples that worked, and the examples that failed:
+
+```
+skills/
+├── ragebait-hooks.md      # v3, 72% success rate
+├── video-text-overlay.md   # v2, 95% success rate
+└── trend-scraping.md       # v1, 88% success rate
+```
+
+Each skill has: what it does, when to use it, when NOT to use it, code examples, version history, and real performance data. Skills improve with every cycle. See [`protocols/shared_skills.md`](protocols/shared_skills.md).
+
+### Agent Handoff — no dropped balls
+
+Agent A generates videos. Agent B needs to post them. The handoff protocol ensures nothing falls through the cracks:
+
+```
+Agent A: "I'm done. Here are the files. Here's what needs to happen next."
+Agent B: "Picked up. Working on it."
+Agent B: "Done. Results in shared_brain.md."
+```
+
+See [`protocols/handoff.md`](protocols/handoff.md).
+
+### Task Queue — shared todo list
+
+Any agent can add tasks. Any agent can pick them up. High priority tasks get picked up within 30 minutes:
+
+```markdown
+- [ ] **[HIGH]** Check analytics — assigned: any — deadline: tonight
+- [~] **[MED]** Generate videos — assigned: heisenberg — started: 2pm
+- [x] **[LOW]** Refresh audio — completed by: rutherford — result: 3 new tracks
+```
+
+See [`protocols/task_queue.md`](protocols/task_queue.md).
+
+### Consensus — resolving disagreements
+
+When agents disagree, they vote with data:
+
+```
+Agent A: NO — ragebait is working, don't change (data: 450 views)
+Agent B: YES — challenge hooks get more comments (data: competitor analysis)
+Resolution: TIE → keep current + test 1 challenge alongside ragebait
+```
+
+See [`protocols/consensus.md`](protocols/consensus.md).
+
+### Event System — real-time coordination
+
+Agents publish events. Other agents react:
+
+```
+VIDEO_POSTED → analytics agent starts 6h countdown
+ANALYTICS_READY → strategy agent updates shared brain
+TARGET_HIT → all agents celebrate + set higher target
+ALERT → humans get notified
+```
+
+See [`protocols/events.md`](protocols/events.md).
