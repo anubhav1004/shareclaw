@@ -13,7 +13,20 @@
 
 # 🦞🧠 ShareClaw
 
-> Build **self-improving agent systems**, not just isolated agents.
+> A shared brain + task queue + consensus layer for self-improving agent swarms.
+
+**ShareClaw** is a small, zero-dependency coordination layer for AI agent teams.
+
+It gives multiple agents:
+
+- a shared brain for goals, wins, failures, and experiment history
+- a task queue for shared work
+- consensus for strategic decisions
+- events and handoffs for coordination between specialists
+
+The result is simple:
+
+> agents stop working like isolated chat sessions and start working like a system that remembers, coordinates, and improves over time.
 
 Imagine four agents working on the same product launch:
 
@@ -22,11 +35,21 @@ Imagine four agents working on the same product launch:
 - one turns learnings into content
 - one measures what actually worked
 
-Normally they forget everything between runs, duplicate work, and argue in chat.
+Normally they forget everything between runs, duplicate work, and lose context.
 
-**ShareClaw** gives them a shared brain, a task queue, a decision layer, an event stream, and a disciplined experiment loop so the system gets smarter every cycle.
+ShareClaw fixes that by giving the team one shared place to:
+
+- remember what worked
+- avoid repeating failures
+- see what needs doing next
+- resolve disagreements explicitly
+- compound learning across cycles
 
 It is not another orchestration framework. It is the **memory + coordination layer** you can plug into any framework or local swarm.
+
+## In One Sentence
+
+ShareClaw helps multiple agents **learn from past work, coordinate current work, and improve future work**.
 
 ---
 

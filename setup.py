@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 setup(
     name="shareclaw",
     version="0.2.0",
-    description="Shared memory + self-improving loops for multi-agent AI systems",
+    description="Shared brain + task queue + consensus for self-improving agent swarms",
     long_description=open("README.md").read(),
     long_description_content_type="text/markdown",
     author="Anubhav Mishra",
