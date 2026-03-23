@@ -13,9 +13,9 @@
 
 # 🦞🧠 ShareClaw
 
-> A shared brain + task queue + consensus layer for self-improving agent swarms.
+> Build agent swarms that remember, coordinate, and improve.
 
-**ShareClaw** is a small, zero-dependency coordination layer for AI agent teams.
+**ShareClaw** is a small, zero-dependency memory + coordination layer for multi-agent systems.
 
 It gives multiple agents:
 
@@ -23,33 +23,35 @@ It gives multiple agents:
 - a task queue for shared work
 - consensus for strategic decisions
 - events and handoffs for coordination between specialists
+- JSON-backed state plus markdown mirrors that humans and agents can both read
 
-The result is simple:
+Without ShareClaw, agents usually:
 
-> agents stop working like isolated chat sessions and start working like a system that remembers, coordinates, and improves over time.
+- forget what worked last time
+- repeat failed experiments
+- duplicate work
+- lose context between runs
+- disagree without a clear decision trail
 
-Imagine four agents working on the same product launch:
+With ShareClaw, they start working like one system:
 
-- one researches winning hooks
-- one ships product changes
-- one turns learnings into content
-- one measures what actually worked
+- they share the same memory
+- they pull from the same queue
+- they vote on important decisions
+- they emit events other agents can react to
+- they compound learning across cycles
 
-Normally they forget everything between runs, duplicate work, and lose context.
+If you are building:
 
-ShareClaw fixes that by giving the team one shared place to:
+- launch swarms
+- coding and review swarms
+- research agents
+- content engines
+- experimentation systems
 
-- remember what worked
-- avoid repeating failures
-- see what needs doing next
-- resolve disagreements explicitly
-- compound learning across cycles
+this is the layer that helps agents **learn from past work, coordinate current work, and improve future work**.
 
 It is not another orchestration framework. It is the **memory + coordination layer** you can plug into any framework or local swarm.
-
-## In One Sentence
-
-ShareClaw helps multiple agents **learn from past work, coordinate current work, and improve future work**.
 
 ---
 
