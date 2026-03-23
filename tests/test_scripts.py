@@ -69,3 +69,30 @@ def test_launch_benchmark_script_json_output():
     payload = json.loads(result.stdout)
     assert payload["shareclaw_final_average"] > payload["ad_hoc_final_average"]
     assert len(payload["shareclaw_average_by_cycle"]) == 9
+
+
+def test_bio_label_projection_bootstrap_script(tmp_path):
+    output_dir = tmp_path / "bio-demo-output"
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(ROOT / "examples" / "bio-label-projection" / "bootstrap.py"),
+            "--output-dir",
+            str(output_dir),
+            "--fresh",
+        ],
+        cwd=ROOT,
+        env=_env(),
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+    assert "Biology benchmark workspace created." in result.stdout
+    assert (output_dir / "challenge_manifest.json").exists()
+    assert (output_dir / "bootstrap_summary.json").exists()
+    assert (output_dir / ".shareclaw" / "shared_brain.md").exists()
+
+    manifest = json.loads((output_dir / "challenge_manifest.json").read_text())
+    assert manifest["challenge_name"] == "Open Problems Label Projection"
+    assert manifest["starter_dataset"]["name"] == "Zebrafish embryonic cells"
