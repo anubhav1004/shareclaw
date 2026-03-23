@@ -66,6 +66,48 @@ This creates a ShareClaw workspace in `examples/bio-label-projection/.demo-outpu
 - a consensus decision
 - recommended next experiments
 
+## Run The Baseline
+
+Install the optional scientific stack for this example:
+
+```bash
+pip install -r examples/bio-label-projection/requirements.txt
+```
+
+Download the official Zebrafish dataset:
+
+```bash
+python examples/bio-label-projection/download_dataset.py --dataset zebrafish
+```
+
+The downloader uses the official public Open Problems bucket:
+
+`https://openproblems-data.s3.amazonaws.com/resources/datasets/openproblems_v1/zebrafish/l1_sqrt/dataset.h5ad`
+
+Run the first reproducible baseline:
+
+```bash
+python examples/bio-label-projection/run_baseline.py \
+  --dataset zebrafish \
+  --download-if-missing
+```
+
+What it does:
+
+- loads the official `.h5ad` dataset
+- uses the provided PCA embedding as the first feature space
+- builds a batch-aware train/test split when possible
+- trains a baseline classifier
+- reports macro F1, accuracy, balanced accuracy, and per-class metrics
+- writes results to `results/zebrafish-logistic_regression-pca/`
+- logs the run back into the ShareClaw brain
+
+For a no-data smoke check, you can resolve the run plan without importing scientific deps:
+
+```bash
+python examples/bio-label-projection/run_baseline.py --dry-run
+```
+
 ## Why This Is Better Than Jumping Straight To Drug Response
 
 An even flashier task would be perturbation prediction, but label projection is the better first proof:

@@ -96,3 +96,28 @@ def test_bio_label_projection_bootstrap_script(tmp_path):
     manifest = json.loads((output_dir / "challenge_manifest.json").read_text())
     assert manifest["challenge_name"] == "Open Problems Label Projection"
     assert manifest["starter_dataset"]["name"] == "Zebrafish embryonic cells"
+
+
+def test_bio_label_projection_baseline_dry_run(tmp_path):
+    output_dir = tmp_path / "bio-demo-output"
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(ROOT / "examples" / "bio-label-projection" / "run_baseline.py"),
+            "--workspace-dir",
+            str(output_dir),
+            "--dataset",
+            "zebrafish",
+            "--dry-run",
+        ],
+        cwd=ROOT,
+        env=_env(),
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+    payload = json.loads(result.stdout)
+    assert payload["dataset_key"] == "zebrafish"
+    assert payload["feature_space"] == "pca"
+    assert payload["model_name"] == "logistic_regression"

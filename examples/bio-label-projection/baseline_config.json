@@ -1,0 +1,17 @@
+{
+  "dataset": "zebrafish",
+  "dataset_id": "openproblems_v1/zebrafish",
+  "dataset_url": "https://openproblems-data.s3.amazonaws.com/resources/datasets/openproblems_v1/zebrafish/l1_sqrt/dataset.h5ad",
+  "label_key": "cell_type",
+  "group_key": "batch",
+  "feature_space": "pca",
+  "model": "logistic_regression",
+  "train_fraction": 0.7,
+  "seed": 7,
+  "target_macro_f1": 0.75,
+  "notes": [
+    "Start with PCA features from the official Open Problems dataset.",
+    "Use batch-aware group splitting when possible.",
+    "Track macro F1 first, then inspect per-class failures."
+  ]
+}

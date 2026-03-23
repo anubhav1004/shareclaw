@@ -6,7 +6,7 @@
   <a href="https://github.com/anubhav1004/shareclaw/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT License"></a>
   <a href="https://github.com/anubhav1004/shareclaw"><img src="https://img.shields.io/badge/python-3.8+-green.svg" alt="Python 3.8+"></a>
   <a href="https://github.com/anubhav1004/shareclaw"><img src="https://img.shields.io/badge/dependencies-zero-brightgreen.svg" alt="Zero Dependencies"></a>
-  <a href="https://github.com/anubhav1004/shareclaw"><img src="https://img.shields.io/badge/tests-62%20passing-brightgreen.svg" alt="62 Tests Passing"></a>
+  <a href="https://github.com/anubhav1004/shareclaw"><img src="https://img.shields.io/badge/tests-67%20passing-brightgreen.svg" alt="67 Tests Passing"></a>
   <a href="https://github.com/anubhav1004/shareclaw"><img src="https://img.shields.io/badge/agent%20coordination-task%20queue%20%2B%20consensus-orange.svg" alt="Task Queue and Consensus"></a>
   <a href="https://github.com/anubhav1004/shareclaw"><img src="https://img.shields.io/github/stars/anubhav1004/shareclaw?style=social" alt="GitHub Stars"></a>
 </p>
@@ -461,7 +461,7 @@ Anything where the system is supposed to improve over time: launches, content lo
 
 ## Tests
 
-The repo currently ships with **62 passing tests** and a GitHub Actions workflow for CI.
+The repo currently ships with **67 passing tests** and a GitHub Actions workflow for CI.
 
 ```bash
 python -m pytest -q
