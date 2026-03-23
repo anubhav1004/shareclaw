@@ -9,18 +9,20 @@ Your goal: **{{METRIC_NAME}} ≥ {{TARGET_VALUE}}** (currently: {{CURRENT_VALUE}
 
 ```
 LOOP FOREVER:
-  1. READ    shared_brain.md — know the current state
+  1. READ    shared_brain.md + task_queue.md + decisions.md
   2. MEASURE — get {{METRIC_NAME}} right now
   3. EVALUATE — did last cycle's change improve {{METRIC_NAME}}?
      YES → ADVANCE: keep the change, raise target by {{STEP_SIZE}}
      NO  → DISCARD: revert, try next variant
   4. DECIDE  — pick ONE variable to change (from the priority list)
-  5. EXECUTE — apply the change
-  6. WAIT    — {{WAIT_TIME}} for results to accumulate
-  7. MEASURE — get {{METRIC_NAME}} again
-  8. RECORD  — log to execution_log.tsv + shared_brain.md
-  9. INTROSPECT — answer the 5 questions
-  10. GOTO 1
+  5. COORDINATE — create tasks, resolve open decisions if blocked
+  6. EXECUTE — apply the change
+  7. WAIT    — {{WAIT_TIME}} for results to accumulate
+  8. MEASURE — get {{METRIC_NAME}} again
+  9. RECORD  — log to execution_log.tsv + shared_brain.md
+  10. INTROSPECT — answer the 5 questions
+  11. EMIT EVENTS — publish anything the rest of the swarm should react to
+  12. GOTO 1
 ```
 
 Do NOT pause to ask the human. The loop runs until interrupted.
@@ -51,6 +53,8 @@ Do NOT pause to ask the human. The loop runs until interrupted.
 - Always have a specific numeric target
 - Keep what works, discard what doesn't
 - Never repeat a failed variant
+- Use consensus before irreversible or strategic shifts
+- Use the task queue instead of burying work in chat
 
 ## Goal Milestones
 

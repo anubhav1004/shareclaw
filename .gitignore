@@ -5,3 +5,5 @@ dist/
 build/
 .shareclaw/
 .eggs/
+examples/launch-swarm/.demo-output/
+benchmarks/.output/

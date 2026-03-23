@@ -35,7 +35,7 @@ What actually happened. Include the full error traceback if applicable.
 
 - OS: [e.g., macOS 15, Ubuntu 24.04]
 - Python version: [e.g., 3.10.12]
-- ShareClaw version: [e.g., 0.1.0]
+- ShareClaw version: [e.g., 0.2.0]
 
 ## Additional context
 

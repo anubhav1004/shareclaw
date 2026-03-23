@@ -17,6 +17,8 @@ git clone https://github.com/<your-fork>/shareclaw.git
 cd shareclaw
 pip install -e .
 pytest
+python examples/launch-swarm/run_demo.py --fresh
+python benchmarks/launch_swarm.py --trials 20 --cycles 8
 ```
 
 That's it. No Docker, no build tools, no config files.
@@ -52,6 +54,8 @@ That's it. No Docker, no build tools, no config files.
 pytest                    # run all tests
 pytest tests/test_core.py # run specific test file
 pytest -v                 # verbose output
+python examples/launch-swarm/run_demo.py --fresh
+python benchmarks/launch_swarm.py --trials 20 --cycles 8
 ```
 
 Write tests for any new functionality. Tests go in `tests/`.

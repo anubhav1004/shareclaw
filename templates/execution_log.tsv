@@ -1,1 +1,1 @@
-cycle	timestamp	variable_tested	variant	metric_before	metric_after	status	description
+cycle	timestamp	variable	variant	before	after	delta%	status	description

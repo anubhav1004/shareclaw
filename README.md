@@ -2,466 +2,474 @@
   <img src="assets/banner.png" alt="ShareClaw" width="100%">
 </p>
 
-
 <p align="center">
   <a href="https://github.com/anubhav1004/shareclaw/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT License"></a>
   <a href="https://github.com/anubhav1004/shareclaw"><img src="https://img.shields.io/badge/python-3.8+-green.svg" alt="Python 3.8+"></a>
   <a href="https://github.com/anubhav1004/shareclaw"><img src="https://img.shields.io/badge/dependencies-zero-brightgreen.svg" alt="Zero Dependencies"></a>
-  <a href="https://github.com/anubhav1004/shareclaw"><img src="https://img.shields.io/badge/tests-46%20passing-brightgreen.svg" alt="46 Tests Passing"></a>
+  <a href="https://github.com/anubhav1004/shareclaw"><img src="https://img.shields.io/badge/tests-61%20passing-brightgreen.svg" alt="61 Tests Passing"></a>
+  <a href="https://github.com/anubhav1004/shareclaw"><img src="https://img.shields.io/badge/agent%20coordination-task%20queue%20%2B%20consensus-orange.svg" alt="Task Queue and Consensus"></a>
   <a href="https://github.com/anubhav1004/shareclaw"><img src="https://img.shields.io/github/stars/anubhav1004/shareclaw?style=social" alt="GitHub Stars"></a>
 </p>
 
 # 🦞🧠 ShareClaw
 
-> *It's March 2026. You have two AI agents — Heisenberg generates TikTok content, Rutherford analyzes what performs. They've been running for a week. Heisenberg just posted a video that got 5x more views than anything before. How? Because Rutherford wrote in the shared brain that ragebait hooks outperform motivational ones by 2x — and Heisenberg read that before creating the next batch. Neither agent was told this by a human. They figured it out together.*
+> Build **self-improving agent systems**, not just isolated agents.
 
-**ShareClaw** gives multiple AI agents a shared brain. They read before acting, write after acting, set their own targets, and get smarter every cycle. It's [autoresearch](https://github.com/karpathy/autoresearch) but for any task, not just ML training — and it works across multiple agents, not just one.
+Imagine four agents working on the same product launch:
 
-```
-┌─────────────┐     ┌──────────────────┐     ┌─────────────┐
-│   Agent A    │────▶│   shared_brain   │◀────│   Agent B    │
-│  (creates)   │     │       .md        │     │  (analyzes)  │
-│              │     │                  │     │              │
-│  reads what  │     │  • what works    │     │  writes what │
-│  B learned   │     │  • what doesn't  │     │  it found    │
-│  before each │     │  • current target│     │  after each  │
-│  action      │     │  • cycle log     │     │  measurement │
-└─────────────┘     └──────────────────┘     └─────────────┘
-                            │
-                    ┌───────▼───────┐
-                    │ execution_log │
-                    │    .tsv       │
-                    │               │
-                    │ cycle 1: ✅   │
-                    │ cycle 2: ❌   │
-                    │ cycle 3: ✅   │
-                    └───────────────┘
-```
+- one researches winning hooks
+- one ships product changes
+- one turns learnings into content
+- one measures what actually worked
 
-Seeing as there seems to be a lot of interest in making AI agents actually learn from their own experience (rather than just following instructions), I'm sharing the system we built and tested in production. It's three markdown files and a protocol. That's it.
+Normally they forget everything between runs, duplicate work, and argue in chat.
+
+**ShareClaw** gives them a shared brain, a task queue, a decision layer, an event stream, and a disciplined experiment loop so the system gets smarter every cycle.
+
+It is not another orchestration framework. It is the **memory + coordination layer** you can plug into any framework or local swarm.
 
 ---
 
-## How it works
+## What It Is
 
-ShareClaw is three files and a set of rules:
+ShareClaw gives agent teams:
 
-### 1. `shared_brain.md` — the living state
+- **Shared memory** for goals, wins, failures, cycles, and winning combinations
+- **Markdown mirrors** that agents and humans can both read easily
+- **Task queue** so work lives in a shared system instead of disappearing in chat
+- **Consensus** for strategic decisions and conflicts
+- **Events** so agents can react to what just happened
+- **Handoffs** so work moves cleanly between specialists
+- **Safe local file locking** so multiple agents can write without clobbering state
+- **Zero dependencies** and a very small codebase
 
-This is the shared memory. Every agent reads it before acting and writes to it after acting. It contains:
+The repo is built around one idea:
 
-```markdown
-## Current Target
-Cycle: 4
-Target: Get avg views above 1,000 (currently 450)
-Variable being tested: video format — vlog montage vs single scene
-Deadline: Check results by tomorrow morning
-
-## What We Know Works
-1. Ragebait hooks ("everyone calls me the TAYLOR SWIFT of MATH")
-   get 2x more views than motivational hooks — confirmed cycle 1 vs 2
-2. 4 hashtags from competitor data > 12 random hashtags — confirmed cycle 3
-3. Chopin Nocturne No. 2 audio doesn't get muted — confirmed
-
-## What We Know Doesn't Work
-1. Long 8-line text overlays — 200 views avg, killed in cycle 1
-2. Mentioning product in first 2 lines — looks like an ad, killed in cycle 2
-3. Copyrighted trending audio — gets muted by TikTok, killed in cycle 3
-
-## Cycle Log
-
-### Cycle 3 (just completed)
-Target: 500 views on at least one video
-Variable: hook style → ragebait vs challenge
-Result: ADVANCE ✅ — ragebait got 450 avg, challenge got 200
-
-Introspection:
-1. What did we expect? Ragebait to outperform based on competitor data
-2. What actually happened? 450 vs 200. Ragebait won decisively.
-3. Why? Ragebait triggers emotional response — jealousy, curiosity, controversy
-4. What next? Keep ragebait, now test video FORMAT
-5. Next target? 1,000 views (2x current best)
-```
-
-The key insight: **what works and what doesn't are append-only**. Agents never delete failed experiments — they learn from them. Over 10 cycles, this becomes a goldmine of institutional knowledge.
-
-### 2. `execution.md` — the autonomous loop
-
-Inspired by [Karpathy's autoresearch program.md](https://github.com/karpathy/autoresearch/blob/master/program.md). It tells the agent: loop forever, test one variable at a time, keep what works, discard what doesn't.
-
-```markdown
-## The Loop
-
-LOOP FOREVER:
-  1. Read shared_brain.md
-  2. MEASURE current metrics
-  3. Did last cycle hit its target?
-     - YES → set HIGHER target, keep the winning variable
-     - NO  → revert, try a different variable
-  4. Change ONE variable (never more than one)
-  5. Execute
-  6. Wait for results (6 hours, 24 hours, whatever your domain needs)
-  7. Measure again
-  8. Log result: advance ✅ or discard ❌
-  9. Write introspection to shared_brain.md
-  10. GOTO 1
-
-Do NOT pause to ask the human if you should continue.
-The loop runs until the human interrupts you, period.
-```
-
-### 3. `execution_log.tsv` — the append-only record
-
-Every cycle gets one line. Over time this becomes your experiment history:
-
-```
-cycle  timestamp            variable     variant    before  after  status   description
-1      2026-03-21T12:00:00  hook_style   motivational  200    200  discard  no improvement over baseline
-2      2026-03-21T18:00:00  hook_style   ragebait      200    450  advance  ragebait 2.25x better
-3      2026-03-22T06:00:00  hook_style   challenge     200    180  discard  worse than baseline
-4      2026-03-22T12:00:00  format       vlog          450    600  advance  vlog + ragebait = best combo
-5      2026-03-22T18:00:00  format       aesthetic     450    350  discard  aesthetic underperformed
-6      2026-03-23T06:00:00  audio        chopin        600    750  advance  chopin + vlog + ragebait
-```
-
-After 6 cycles you know: **ragebait hooks + vlog format + chopin audio = 750 views** (up from 200 baseline). No human told the agents this. They figured it out by testing one variable at a time.
+> Agents should not just do work. They should **learn, coordinate, and compound**.
 
 ---
 
-## The Introspection Protocol
+## Why It Stands Out
 
-This is what makes ShareClaw different from just "saving state to a file." After every cycle, agents must answer five questions **in the shared brain**:
+Most agent tools optimize for orchestration inside one run.
 
-```
-1. What did we expect? → forces agents to have a hypothesis
-2. What actually happened? → forces agents to look at real data
-3. Why do we think it happened? → forces analysis, not just observation
-4. What should we try next? → forces forward-thinking
-5. What is the specific target for next cycle? → forces commitment to a number
-```
+ShareClaw optimizes for what happens **across runs**:
 
-Without this, agents just log "posted 3 videos" and move on. With this, they log "posted 3 ragebait videos, expected 500 views, got 450, probably because the account is still warming up, next cycle will test a different video format while keeping ragebait hooks, target: 600 views."
+- what the swarm has learned
+- what it should never repeat
+- what it is trying next
+- what work is waiting
+- what decisions are still unresolved
+- what changed since the last cycle
+
+That makes it useful for systems that are supposed to improve over time:
+
+- growth loops
+- content engines
+- research swarms
+- product launch teams
+- coding + review agents
+- ops and experimentation systems
 
 ---
 
-## Quick start
+## What Ships Today
+
+The runtime lives in `./.shareclaw/` and uses **JSON as the source of truth** plus **auto-generated markdown mirrors** for humans and agents.
+
+```
+.shareclaw/
+├── brain.json           # source of truth for goals, learnings, cycles, winners
+├── shared_brain.md      # markdown mirror for agents + humans
+├── execution_log.tsv    # append-only experiment log
+├── tasks.json           # structured task queue
+├── task_queue.md        # markdown task mirror
+├── decisions.json       # consensus decisions + votes + resolutions
+├── decisions.md         # markdown decision mirror
+├── events.json          # append-only event stream
+├── events.md            # markdown event mirror
+├── skills/              # reusable shared skills
+└── handoffs/            # agent-to-agent handoffs
+```
+
+This gives you the best of both worlds:
+
+- **structured state** for reliable updates
+- **readable files** that agents can consume directly
+
+---
+
+## Quick Start
+
+Install from GitHub:
 
 ```bash
 pip install git+https://github.com/anubhav1004/shareclaw.git
 ```
 
-Or clone and install locally:
+Or clone locally:
 
 ```bash
 git clone https://github.com/anubhav1004/shareclaw.git
-cd shareclaw && pip install -e .
+cd shareclaw
+pip install -e .
 ```
 
-Then tell your agents about it. In your agent's system prompt or config:
-
-```
-CRITICAL: Read /path/to/shared_brain.md BEFORE every task.
-Write results AFTER every task. Follow the introspection protocol.
-Set specific numeric targets. Keep what works, discard what doesn't.
-```
-
-That's it. Your agents now share a brain.
-
-## 🎬 Demo
-
-<p align="center">
-  <img src="assets/demo.svg" alt="ShareClaw Demo" width="700">
-</p>
-
-*3 cycles. 200 → 520 DAU. Agents found the winning combo autonomously. No human told them what to try.*
-
-
-
-
----
-
-## For OpenClaw users
-
-If you're running [OpenClaw](https://openclaw.ai) with multiple agents, add this to each agent's identity theme in `openclaw.json`:
-
-```json
-{
-  "agents": {
-    "list": [
-      {
-        "id": "agent-a",
-        "identity": {
-          "theme": "... CRITICAL OVERRIDE FOR SHARED BRAIN: Read /home/node/.openclaw/workspace/shared_brain.md BEFORE every task. Write results AFTER every task. Follow the introspection protocol. Set specific numeric targets. ..."
-        }
-      },
-      {
-        "id": "agent-b",
-        "identity": {
-          "theme": "... [same override] ..."
-        }
-      }
-    ]
-  }
-}
-```
-
-Both agents now read and write to the same file. Agent A's learnings are immediately available to Agent B.
-
----
-
-## For Claude Code users
-
-If you're using Claude Code (Anthropic's CLI), ShareClaw works through the project memory system:
+Create a new shared brain:
 
 ```bash
-# Add shared brain to your Claude Code project
-cp templates/shared_brain.md .claude/projects/your-project/memory/shared_brain.md
+shareclaw init launch-swarm \
+  --objective "Grow activated users" \
+  --metric activated_users \
+  --variables hook landing_page cta demo_angle
 ```
 
-Or just keep `shared_brain.md` in your repo root — Claude Code reads files in the working directory.
+Set a target and create work for the swarm:
+
+```bash
+shareclaw target "10 activated users/day"
+shareclaw task add "Ship 45-second demo video" --priority HIGH --by strategist
+shareclaw task add "Rewrite repo opening hook" --priority HIGH --by strategist
+shareclaw consensus start \
+  "Should the launch center on self-improving systems?" \
+  --option SELF_IMPROVING_SYSTEMS \
+  --option MULTI_AGENT_MEMORY \
+  --by strategist
+```
+
+See the runtime files your agents should read:
+
+```bash
+shareclaw files
+```
+
+Log results as the system learns:
+
+```bash
+shareclaw cycle hook "self-improving systems" 200 480 advance "message landed"
+shareclaw learn "self-improving systems framing outperforms agent memory framing" "480 vs 200 clicks"
+shareclaw event emit TARGET_HIT --agent analyst --data '{"activated_users": 12}'
+shareclaw status
+```
 
 ---
 
-## For any LLM agent
+## Run The Demo
 
-ShareClaw is just markdown files. Any agent that can read and write files can use it:
+See the full launch-swarm story play out locally:
+
+```bash
+python examples/launch-swarm/run_demo.py --fresh
+```
+
+That command creates a real ShareClaw workspace with:
+
+- targets
+- task queue activity
+- consensus votes
+- events
+- handoffs
+- shared skills
+- winning and losing launch experiments
+
+The output lands in `examples/launch-swarm/.demo-output/` by default.
+
+---
+
+## Run The Benchmark
+
+Measure the ShareClaw thesis against an ad-hoc swarm:
+
+```bash
+python benchmarks/launch_swarm.py
+```
+
+This synthetic benchmark compares:
+
+- an ad-hoc swarm that changes things without durable memory of failures
+- a ShareClaw-style swarm that tests methodically, keeps winners, and avoids repeated mistakes
+
+There is also JSON output if you want to turn the result into charts or dashboards:
+
+```bash
+python benchmarks/launch_swarm.py --json
+```
+
+See [`benchmarks/README.md`](benchmarks/README.md).
+
+---
+
+## Python Example
 
 ```python
-# Python example — agent reads shared brain before acting
-def run_cycle():
-    # 1. Read shared brain
-    with open("shared_brain.md") as f:
-        brain = f.read()
+from shareclaw import Brain
 
-    # 2. Parse current target
-    target = extract_target(brain)  # "500 views"
+brain = Brain(
+    "launch-swarm",
+    objective="Grow activated users",
+    metric="activated_users",
+    variables=["hook", "landing_page", "cta", "demo_angle"],
+)
 
-    # 3. Execute (your domain-specific action)
-    result = execute_action(target)
+brain.set_target("10 activated users/day")
+brain.create_task("Ship 45-second demo video", priority="HIGH", created_by="strategist")
 
-    # 4. Measure
-    metric = measure_result()
+decision_id = brain.start_consensus(
+    "Should the launch center on self-improving systems?",
+    options=["SELF_IMPROVING_SYSTEMS", "MULTI_AGENT_MEMORY"],
+    created_by="strategist",
+)
 
-    # 5. Evaluate
-    if metric >= target:
-        status = "advance"
-        new_target = target * 1.5  # raise the bar
-    else:
-        status = "discard"
-        new_target = target  # try different variable
+brain.vote(
+    decision_id,
+    agent="content",
+    choice="SELF_IMPROVING_SYSTEMS",
+    reason="More aspirational and memorable",
+)
 
-    # 6. Write back to shared brain
-    update_shared_brain("shared_brain.md", {
-        "cycle_result": status,
-        "metric": metric,
-        "introspection": {
-            "expected": target,
-            "actual": metric,
-            "why": analyze_why(metric, target),
-            "next": decide_next_variable(),
-            "next_target": new_target,
-        }
-    })
+brain.log_cycle("hook", "self-improving systems", 200, 480, "advance", "message landed")
+brain.learn(
+    "self-improving systems framing outperforms agent memory framing",
+    evidence="480 vs 200 clicks",
+)
 
-    # 7. Log
-    append_to_log("execution_log.tsv", cycle_data)
-```
-
-```javascript
-// Node.js example — agent reads shared brain
-const fs = require('fs');
-
-async function runCycle() {
-  // Read shared brain
-  const brain = fs.readFileSync('shared_brain.md', 'utf-8');
-  const target = parseTarget(brain);
-
-  // Execute
-  const result = await executeAction(target);
-  const metric = await measure();
-
-  // Evaluate + write back
-  const status = metric >= target ? 'advance' : 'discard';
-  updateSharedBrain('shared_brain.md', { status, metric, target });
-  appendLog('execution_log.tsv', { cycle: getCycleNum(), status, metric });
-}
+print(brain.context())
 ```
 
 ---
 
-## Project structure
+## The Core Loop
+
+ShareClaw is opinionated about how agent systems improve:
+
+1. Read the shared state before acting.
+2. Make the current target explicit.
+3. Change one meaningful variable at a time.
+4. Queue the work instead of hiding it in chat.
+5. Use consensus when the decision matters.
+6. Measure the result.
+7. Record what worked and what failed.
+8. Emit events so the rest of the swarm can react.
+9. Raise the bar when a cycle wins.
+
+This is the difference between:
+
+- “agents doing tasks”
+
+and
+
+- “a system that actually learns”
+
+---
+
+## A Flagship Use Case: Launch Swarm
+
+The best way to understand ShareClaw is as a **self-improving launch system**.
+
+You have:
+
+- a research agent finding winning angles
+- a builder agent shipping product changes
+- a content agent creating launch assets
+- an analytics agent measuring outcomes
+
+They all share the same files, the same queue, and the same decisions.
+
+That means the repo itself becomes something the swarm can optimize:
+
+- opening paragraph
+- demo angle
+- social hook
+- CTA
+- onboarding experience
+- proof and testimonials
+
+See [`examples/launch-swarm/README.md`](examples/launch-swarm/README.md) for the full pattern.
+
+---
+
+## Public Launch Kit
+
+If you want to push ShareClaw publicly, there is now a dedicated guide with:
+
+- positioning
+- proof points
+- launch sequence
+- post drafts
+- release notes outline
+- final checklist
+
+See [`docs/public-launch.md`](docs/public-launch.md).
+
+For reusable post text and release copy, see [`docs/launch-copy.md`](docs/launch-copy.md) and [`docs/releases/v0.2.0.md`](docs/releases/v0.2.0.md).
+
+---
+
+## CLI Surface
+
+ShareClaw ships a small CLI that covers the main coordination primitives:
+
+```bash
+shareclaw init ...
+shareclaw target ...
+shareclaw cycle ...
+shareclaw learn ...
+shareclaw fail ...
+shareclaw task add|list|pickup|done|requeue ...
+shareclaw consensus start|list|vote|resolve ...
+shareclaw event emit|list ...
+shareclaw skill add|list|get ...
+shareclaw handoff ...
+shareclaw status
+shareclaw context
+shareclaw files
+```
+
+---
+
+## Protocol Suite
+
+ShareClaw now combines protocol docs with actual runtime support:
+
+| Capability | Runtime Support | Protocol Doc |
+|------------|-----------------|--------------|
+| Shared brain | `brain.json` + `shared_brain.md` | built-in |
+| Execution log | `execution_log.tsv` | built-in |
+| Shared skills | JSON skill files + API | [`protocols/shared_skills.md`](protocols/shared_skills.md) |
+| Handoffs | JSON handoff files + API | [`protocols/handoff.md`](protocols/handoff.md) |
+| Task queue | `tasks.json` + `task_queue.md` + API | [`protocols/task_queue.md`](protocols/task_queue.md) |
+| Consensus | `decisions.json` + `decisions.md` + API | [`protocols/consensus.md`](protocols/consensus.md) |
+| Events | `events.json` + `events.md` + API | [`protocols/events.md`](protocols/events.md) |
+
+---
+
+## Integrations
+
+ShareClaw is designed to slot into any agent stack.
+
+- CrewAI
+- AutoGen
+- LangGraph
+- OpenClaw
+- Claude Code
+- local scripts
+- custom agent runtimes
+
+See [`docs/integrations.md`](docs/integrations.md).
+
+---
+
+## Concurrency and Safety
+
+ShareClaw uses **file locking** for normal local multi-agent coordination on a shared filesystem.
+
+That means:
+
+- one agent will not blindly overwrite another agent's latest brain state
+- stale instances reload the current state before mutating it
+- markdown mirrors stay synchronized with the source files
+
+For very high-throughput or distributed systems, you may eventually want a networked backend. But for local swarms, shared machines, and simple multi-agent rigs, this gets you a long way with almost no setup.
+
+---
+
+## Templates
+
+If you want to run ShareClaw without the Python runtime, there are starter templates in [`templates/`](templates):
+
+- `shared_brain.md`
+- `execution.md`
+- `execution_log.tsv`
+- `task_queue.md`
+- `decisions.md`
+- `events.md`
+
+That makes ShareClaw useful even if your agents only know how to read and write files.
+
+---
+
+## Project Structure
 
 ```
 shareclaw/
-├── README.md                          # you are here
+├── shareclaw/
+│   ├── core.py
+│   ├── cli.py
+│   └── __init__.py
+├── protocols/
+│   ├── shared_skills.md
+│   ├── handoff.md
+│   ├── task_queue.md
+│   ├── consensus.md
+│   └── events.md
+├── docs/
+│   └── integrations.md
 ├── templates/
-│   ├── shared_brain.md                # copy this → your project
-│   ├── execution.md                   # copy this → your project
-│   └── execution_log.tsv             # copy this → your project
-└── examples/
-    ├── tiktok-growth/                 # real-world: social media optimization
-    │   ├── README.md
-    │   ├── shared_brain.md            # actual state from production use
-    │   └── execution.md              # actual loop program
-    └── content-pipeline/             # multi-agent content creation
-        ├── README.md
-        └── shared_brain.md
+│   ├── shared_brain.md
+│   ├── execution.md
+│   ├── execution_log.tsv
+│   ├── task_queue.md
+│   ├── decisions.md
+│   └── events.md
+├── examples/
+│   ├── launch-swarm/
+│   ├── tiktok-growth/
+│   ├── content-pipeline/
+│   ├── saas-growth/
+│   └── code-quality/
+└── tests/
 ```
 
 ---
 
-## Design decisions
+## FAQ
 
-**Why markdown and not a database?**
-Because every LLM can read and write markdown. No setup, no dependencies, no API. Just a file. Also, markdown is human-readable — you can open `shared_brain.md` and immediately understand the system's current state.
+<details>
+<summary><b>How is this different from just saving state to a JSON file?</b></summary>
 
-**Why one variable at a time?**
-Because if you change the hook AND the format AND the audio in the same cycle, and views go up, you don't know which change caused it. One variable per cycle = clean signal.
+ShareClaw is not raw state storage. It gives you a disciplined learning loop, task queue, consensus, events, handoffs, markdown mirrors, and a report/context surface built specifically for agent teams.
+</details>
 
-**Why append-only for "what doesn't work"?**
-Because the most expensive mistake is repeating a failed experiment. If Agent A tested "long motivational hooks" and they flopped, Agent B should never try them again. But if you delete the failure, Agent B doesn't know.
+<details>
+<summary><b>How is this different from CrewAI, AutoGen, or LangGraph?</b></summary>
 
-**Why specific numeric targets?**
-Because "improve engagement" is meaningless. "Get to 500 views per post" is testable. If you hit it, you know. If you don't, you know. Vague targets lead to vague actions.
+Those tools orchestrate agents. ShareClaw gives the team a shared memory and coordination layer that persists what they learned between runs.
+</details>
 
-**Why introspection questions?**
-Because without them, agents just log what they did, not what they learned. The five questions force reflection: hypothesis → data → analysis → decision → commitment. This is what separates a learning system from a logging system.
+<details>
+<summary><b>Do agents have to use Python?</b></summary>
+
+No. The runtime generates markdown mirrors like `shared_brain.md`, `task_queue.md`, `decisions.md`, and `events.md` specifically so file-based agents can still read the system state.
+</details>
+
+<details>
+<summary><b>Can multiple agents use the same brain safely?</b></summary>
+
+Yes for normal local/shared-filesystem setups. ShareClaw uses file locking and reloads state before writes so stale processes do not clobber the latest shared state.
+</details>
+
+<details>
+<summary><b>What should I build with this?</b></summary>
+
+Anything where the system is supposed to improve over time: launches, content loops, research swarms, growth experiments, product iteration, or coding agents that need shared memory and explicit decisions.
+</details>
 
 ---
 
-## What people are building with ShareClaw
+## Tests
 
-*(If you build something cool, open a PR to add it here)*
+The repo currently ships with **61 passing tests** and a GitHub Actions workflow for CI.
 
-- **TikTok growth engine** — autonomous content optimization across hooks, formats, audio, posting times
-- **Instagram reel optimization** — multi-format testing for education app marketing
-- **Content quality iteration** — Agent A writes, Agent B reviews, quality score improves each cycle
+```bash
+python -m pytest -q
+```
 
 ---
 
 ## License
 
-MIT — use it for anything.
+MIT.
 
 ---
 
-> *"Two agents sharing a brain is worth ten agents working alone."*
-
----
-
-## 📋 Full Protocol Suite
-
-ShareClaw isn't just shared memory. It's a complete multi-agent collaboration framework:
-
-| Protocol | File | What It Does |
-|----------|------|-------------|
-| **Shared Brain** | `shared_brain.md` | Living state — targets, learnings, cycle log |
-| **Shared Skills** | [`protocols/shared_skills.md`](protocols/shared_skills.md) | Agents teach each other capabilities |
-| **Agent Handoff** | [`protocols/handoff.md`](protocols/handoff.md) | Clean work passing between agents |
-| **Task Queue** | [`protocols/task_queue.md`](protocols/task_queue.md) | Shared todo list any agent can pick up |
-| **Consensus** | [`protocols/consensus.md`](protocols/consensus.md) | Multi-agent voting on decisions |
-| **Event System** | [`protocols/events.md`](protocols/events.md) | Agents publish/subscribe to events |
-| **Execution Loop** | `execution.md` | Autonomous self-improving loop |
-
-### Shared Skills — agents teaching agents
-
-When Agent A figures out that ragebait hooks get 2x more views, it writes a skill file. Agent B reads it and immediately knows the formula, the examples that worked, and the examples that failed:
-
-```
-skills/
-├── ragebait-hooks.md      # v3, 72% success rate
-├── video-text-overlay.md   # v2, 95% success rate
-└── trend-scraping.md       # v1, 88% success rate
-```
-
-Each skill has: what it does, when to use it, when NOT to use it, code examples, version history, and real performance data. Skills improve with every cycle. See [`protocols/shared_skills.md`](protocols/shared_skills.md).
-
-### Agent Handoff — no dropped balls
-
-Agent A generates videos. Agent B needs to post them. The handoff protocol ensures nothing falls through the cracks:
-
-```
-Agent A: "I'm done. Here are the files. Here's what needs to happen next."
-Agent B: "Picked up. Working on it."
-Agent B: "Done. Results in shared_brain.md."
-```
-
-See [`protocols/handoff.md`](protocols/handoff.md).
-
-### Task Queue — shared todo list
-
-Any agent can add tasks. Any agent can pick them up. High priority tasks get picked up within 30 minutes:
-
-```markdown
-- [ ] **[HIGH]** Check analytics — assigned: any — deadline: tonight
-- [~] **[MED]** Generate videos — assigned: heisenberg — started: 2pm
-- [x] **[LOW]** Refresh audio — completed by: rutherford — result: 3 new tracks
-```
-
-See [`protocols/task_queue.md`](protocols/task_queue.md).
-
-### Consensus — resolving disagreements
-
-When agents disagree, they vote with data:
-
-```
-Agent A: NO — ragebait is working, don't change (data: 450 views)
-Agent B: YES — challenge hooks get more comments (data: competitor analysis)
-Resolution: TIE → keep current + test 1 challenge alongside ragebait
-```
-
-See [`protocols/consensus.md`](protocols/consensus.md).
-
-### Event System — real-time coordination
-
-Agents publish events. Other agents react:
-
-```
-VIDEO_POSTED → analytics agent starts 6h countdown
-ANALYTICS_READY → strategy agent updates shared brain
-TARGET_HIT → all agents celebrate + set higher target
-ALERT → humans get notified
-```
-
-See [`protocols/events.md`](protocols/events.md).
-
----
-
-## ❓ FAQ
-
-<details>
-<summary><b>How is this different from just saving state to a JSON file?</b></summary>
-
-ShareClaw adds structure on top of raw state: targets with deadlines, the advance/discard loop, introspection questions that force analysis, shared skills with version history, and auto-optimization (auto_target, auto_advance, winning_combo). A JSON file stores data. ShareClaw stores knowledge.
-</details>
-
-<details>
-<summary><b>How is this different from CrewAI / AutoGen / LangGraph?</b></summary>
-
-Those are agent frameworks — they define how agents communicate within a session. ShareClaw is a memory layer — it persists what agents learned across sessions and across different frameworks. You can use ShareClaw inside CrewAI, AutoGen, or LangGraph. See <a href="docs/integrations.md">integrations</a>.
-</details>
-
-<details>
-<summary><b>Does this work with GPT / Claude / Gemini / local models?</b></summary>
-
-Yes. ShareClaw is just Python + JSON files. Any LLM that can read files can use <code>brain.context()</code> to get the full shared state as a string. Paste it into any system prompt.
-</details>
-
-<details>
-<summary><b>How many agents can share one brain?</b></summary>
-
-No limit. We've tested with 2 agents (Heisenberg + Rutherford) in production. The Brain uses file-based JSON storage, so any number of agents can read/write. For high-concurrency setups, consider adding file locking.
-</details>
-
-<details>
-<summary><b>What happens if two agents write at the same time?</b></summary>
-
-Currently last-write-wins. For production use with many concurrent agents, wrap Brain operations in a file lock. We plan to add built-in locking in v0.2.
-</details>
-
-<details>
-<summary><b>Can I use this without pip install — just the markdown files?</b></summary>
-
-Yes. Copy <code>templates/shared_brain.md</code> and <code>templates/execution.md</code> into your project. Tell your agents to read/write them. That's the simplest setup — no Python needed.
-</details>
-
+> *Two smart agents are useful. A swarm that remembers, coordinates, and improves is a system.*

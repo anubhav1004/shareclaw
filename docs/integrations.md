@@ -184,7 +184,7 @@ app.invoke({"task": "optimize content", "brain_context": "", "result": "", "metr
 
 ## OpenClaw
 
-Add ShareClaw to each agent's identity theme in your `openclaw.json`. Both agents read and write to the same `shared_brain.md` file on disk.
+Add ShareClaw to each agent's identity theme in your `openclaw.json`. Point them at the generated markdown mirrors inside `.shareclaw/` so every agent sees the same brain, queue, and decisions.
 
 ```json
 {
@@ -193,13 +193,13 @@ Add ShareClaw to each agent's identity theme in your `openclaw.json`. Both agent
       {
         "id": "heisenberg",
         "identity": {
-          "theme": "You are a content creator. CRITICAL: Read /home/node/.openclaw/workspace/shared_brain.md BEFORE every task. Write results AFTER every task. Follow the introspection protocol. Log what works, what fails, and set numeric targets."
+          "theme": "You are a content creator. CRITICAL: Read /home/node/.openclaw/workspace/.shareclaw/shared_brain.md, /home/node/.openclaw/workspace/.shareclaw/task_queue.md, and /home/node/.openclaw/workspace/.shareclaw/decisions.md BEFORE every task. Write results AFTER every task. Follow the introspection protocol. Log what works, what fails, and set numeric targets."
         }
       },
       {
         "id": "rutherford",
         "identity": {
-          "theme": "You are an analytics agent. CRITICAL: Read /home/node/.openclaw/workspace/shared_brain.md BEFORE every task. Write your analysis AFTER every measurement. Update what works and what doesn't. Set the next cycle's target."
+          "theme": "You are an analytics agent. CRITICAL: Read /home/node/.openclaw/workspace/.shareclaw/shared_brain.md, /home/node/.openclaw/workspace/.shareclaw/task_queue.md, and /home/node/.openclaw/workspace/.shareclaw/decisions.md BEFORE every task. Write your analysis AFTER every measurement. Update what works and what doesn't. Set the next cycle's target."
         }
       }
     ]
@@ -224,7 +224,7 @@ brain.learn("Ragebait hooks get 2x views", evidence="cycle 3 data")  # write aft
 
 ## Claude Code
 
-Use ShareClaw through Claude Code's project memory system. Put `shared_brain.md` where Claude Code can read it.
+Use ShareClaw through Claude Code's project memory system. You can either use the generated `.shareclaw/*.md` mirrors or keep standalone templates in Claude's memory.
 
 **Option 1: Project memory (recommended)**
 
@@ -235,9 +235,16 @@ cp templates/shared_brain.md .claude/projects/your-project/memory/shared_brain.m
 
 Claude Code automatically reads files in the memory directory. Your shared brain becomes part of every conversation.
 
-**Option 2: Repo root**
+**Option 2: Runtime mirrors**
 
-Just keep `shared_brain.md` in your repo root. Claude Code reads files in the working directory.
+If you're using the Python runtime, point Claude Code at:
+
+- `.shareclaw/shared_brain.md`
+- `.shareclaw/task_queue.md`
+- `.shareclaw/decisions.md`
+- `.shareclaw/events.md`
+
+These files are auto-generated from the JSON source of truth.
 
 **Option 3: Python API in Claude Code sessions**
 
@@ -335,14 +342,20 @@ tools = [
 ShareClaw is just files. If your agent can read and write files, it can use ShareClaw. No Python package needed.
 
 ```python
-# Read the shared brain before acting
-with open("shared_brain.md") as f:
+# Read the generated markdown mirrors before acting
+with open(".shareclaw/shared_brain.md") as f:
     context = f.read()
+
+with open(".shareclaw/task_queue.md") as f:
+    queue = f.read()
 
 # Include it in your LLM prompt
 prompt = f"""
 SHARED BRAIN (team knowledge -- read this first):
 {context}
+
+TASK QUEUE:
+{queue}
 
 Now do your task: ...
 """
@@ -350,16 +363,14 @@ Now do your task: ...
 # Call any LLM
 response = call_llm(prompt)
 
-# Write results back
-with open("shared_brain.md", "a") as f:
-    f.write(f"\n### Cycle {n} Result\n")
-    f.write(f"Variable: {variable}\n")
-    f.write(f"Result: {result}\n")
-    f.write(f"Status: {'advance' if improved else 'discard'}\n")
-
-# Log to TSV
-with open("execution_log.tsv", "a") as f:
-    f.write(f"{cycle}\t{timestamp}\t{variable}\t{variant}\t{before}\t{after}\t{status}\n")
+# Better yet, write through the JSON-backed runtime with the Python API:
+#
+# from shareclaw import Brain
+# brain = Brain("my-project")
+# brain.log_cycle(...)
+# brain.learn(...)
+# brain.create_task(...)
+# brain.start_consensus(...)
 ```
 
 This works with:

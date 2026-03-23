@@ -13,6 +13,10 @@ class TestBrainInit:
         assert brain.path.exists()
         assert brain.skills_dir.exists()
         assert brain.handoffs_dir.exists()
+        assert brain.shared_brain_markdown_file.exists()
+        assert brain.task_queue_markdown_file.exists()
+        assert brain.events_markdown_file.exists()
+        assert brain.decisions_markdown_file.exists()
 
     def test_default_state(self, tmp_path):
         brain = Brain("test-project", path=str(tmp_path / ".shareclaw"))
@@ -27,6 +31,15 @@ class TestBrainInit:
         assert brain.state["milestones"] == []
         assert brain.state["agents"] == {}
         assert "created_at" in brain.state
+
+    def test_files_manifest_points_to_runtime_exports(self, tmp_path):
+        brain = Brain("test-project", path=str(tmp_path / ".shareclaw"))
+        files = brain.files()
+        assert files["state_json"].endswith("brain.json")
+        assert files["shared_brain_md"].endswith("shared_brain.md")
+        assert files["task_queue_md"].endswith("task_queue.md")
+        assert files["events_md"].endswith("events.md")
+        assert files["decisions_md"].endswith("decisions.md")
 
 
 # ── 2. set_target ────────────────────────────────────────────────────
@@ -238,8 +251,59 @@ class TestSkills:
         brain.add_skill("s1", description="d1")
         assert "s1" in brain.state["skills"]
 
+    def test_skill_version_increments_on_update(self, tmp_path):
+        brain = Brain("tp", path=str(tmp_path / ".sc"))
+        brain.add_skill("s1", description="first")
+        brain.add_skill("s1", description="second")
+        skill = brain.get_skill("s1")
+        assert skill["version"] == 2
+        assert skill["description"] == "second"
 
-# ── 9. Handoffs ──────────────────────────────────────────────────────
+
+# ── 9b. Task Queue ──────────────────────────────────────────────────
+
+class TestTaskQueue:
+    def test_create_pickup_and_complete_task(self, tmp_path):
+        brain = Brain("tp", path=str(tmp_path / ".sc"))
+        task_id = brain.create_task("Ship demo", priority="HIGH", created_by="lead")
+        task = brain.pickup_task("builder")
+        assert task["id"] == task_id
+        assert task["status"] == "in_progress"
+        assert task["assigned_to"] == "builder"
+
+        done = brain.complete_task(task_id, result="Demo shipped", completed_by="builder")
+        assert done["status"] == "completed"
+        assert done["result"] == "Demo shipped"
+
+        completed = brain.list_tasks(status="completed")
+        assert len(completed) == 1
+        assert completed[0]["id"] == task_id
+
+    def test_pickup_prefers_high_priority(self, tmp_path):
+        brain = Brain("tp", path=str(tmp_path / ".sc"))
+        brain.create_task("Low task", priority="LOW")
+        brain.create_task("High task", priority="HIGH")
+        task = brain.pickup_task("agent")
+        assert task["title"] == "High task"
+
+    def test_requeue_as_blocked(self, tmp_path):
+        brain = Brain("tp", path=str(tmp_path / ".sc"))
+        task_id = brain.create_task("Task 1")
+        brain.pickup_task("agent-a")
+        task = brain.requeue_task(task_id, note="Waiting on API", status="blocked")
+        assert task["status"] == "blocked"
+        assert task["note"] == "Waiting on API"
+
+    def test_markdown_mirrors_include_tasks(self, tmp_path):
+        brain = Brain("tp", path=str(tmp_path / ".sc"))
+        brain.create_task("Ship demo", priority="HIGH")
+        task_queue = brain.task_queue_markdown_file.read_text()
+        shared_brain = brain.shared_brain_markdown_file.read_text()
+        assert "Ship demo" in task_queue
+        assert "Active Task Queue" in shared_brain
+
+
+# ── 10. Handoffs ─────────────────────────────────────────────────────
 
 class TestHandoffs:
     def test_handoff_create_and_pickup(self, tmp_path):
@@ -288,7 +352,7 @@ class TestHandoffs:
         assert brain.pickup_handoff("agent-b") == {}
 
 
-# ── 10. Events ───────────────────────────────────────────────────────
+# ── 11. Events ───────────────────────────────────────────────────────
 
 class TestEvents:
     def test_emit_and_get(self, tmp_path):
@@ -327,7 +391,47 @@ class TestEvents:
         assert len(all_events) == 100
 
 
-# ── 11. report ───────────────────────────────────────────────────────
+# ── 12. Consensus ────────────────────────────────────────────────────
+
+class TestConsensus:
+    def test_majority_vote_wins(self, tmp_path):
+        brain = Brain("tp", path=str(tmp_path / ".sc"))
+        decision_id = brain.start_consensus("Switch hooks?", options=["YES", "NO"])
+        brain.vote(decision_id, "agent-a", "YES", "Better click-through")
+        brain.vote(decision_id, "agent-b", "YES", "More shares")
+        brain.vote(decision_id, "agent-c", "NO", "Current is stable")
+        decision = brain.resolve_consensus(decision_id, resolved_by="lead")
+        assert decision["status"] == "resolved"
+        assert decision["resolution"]["winner"] == "YES"
+        assert decision["resolution"]["tie"] is False
+
+    def test_tie_uses_keep_current_policy(self, tmp_path):
+        brain = Brain("tp", path=str(tmp_path / ".sc"))
+        decision_id = brain.start_consensus("Switch hooks?", options=["YES", "NO"])
+        brain.vote(decision_id, "agent-a", "YES", "Test it")
+        brain.vote(decision_id, "agent-b", "NO", "Stay stable")
+        decision = brain.resolve_consensus(decision_id)
+        assert decision["resolution"]["winner"] == "KEEP_CURRENT"
+        assert decision["resolution"]["tie"] is True
+
+    def test_agent_vote_replaces_previous_vote(self, tmp_path):
+        brain = Brain("tp", path=str(tmp_path / ".sc"))
+        decision_id = brain.start_consensus("Switch hooks?", options=["YES", "NO"])
+        brain.vote(decision_id, "agent-a", "YES", "first take")
+        decision = brain.vote(decision_id, "agent-a", "NO", "updated take")
+        assert len(decision["votes"]) == 1
+        assert decision["votes"][0]["choice"] == "NO"
+
+    def test_markdown_mirrors_include_decisions(self, tmp_path):
+        brain = Brain("tp", path=str(tmp_path / ".sc"))
+        brain.start_consensus("Switch hooks?", options=["YES", "NO"])
+        decisions = brain.decisions_markdown_file.read_text()
+        shared_brain = brain.shared_brain_markdown_file.read_text()
+        assert "Switch hooks?" in decisions
+        assert "Open Decisions" in shared_brain
+
+
+# ── 13. report ───────────────────────────────────────────────────────
 
 class TestReport:
     def test_report_returns_string(self, tmp_path):
@@ -357,7 +461,7 @@ class TestReport:
         assert len(result) > 0
 
 
-# ── 12. context ──────────────────────────────────────────────────────
+# ── 14. context ──────────────────────────────────────────────────────
 
 class TestContext:
     def test_returns_llm_string(self, tmp_path):
@@ -382,7 +486,7 @@ class TestContext:
         assert "Available Skills" in ctx
 
 
-# ── 13. State persists across reloads ────────────────────────────────
+# ── 15. State persists across reloads ────────────────────────────────
 
 class TestPersistence:
     def test_state_persists_across_reloads(self, tmp_path):
@@ -405,7 +509,9 @@ class TestPersistence:
         assert len(brain2.state["cycles"]) == 1
         assert len(brain2.state["milestones"]) == 1
         assert "s1" in brain2.state["skills"]
-        assert len(brain2.get_events()) == 1
+        event_types = {event["type"] for event in brain2.get_events(limit=20)}
+        assert "ev1" in event_types
+        assert "TARGET_HIT" in event_types
 
     def test_multiple_cycles_persist(self, tmp_path):
         sc_path = str(tmp_path / ".sc")
@@ -421,7 +527,7 @@ class TestPersistence:
         assert len(brain2.state["works"]) == 5
 
 
-# ── 14. Concurrent usage ────────────────────────────────────────────
+# ── 16. Concurrent usage ────────────────────────────────────────────
 
 class TestConcurrent:
     def test_two_instances_same_path(self, tmp_path):
@@ -467,3 +573,15 @@ class TestConcurrent:
         # Note: b.emit reads the file fresh, so both should be present
         assert "from_a" in types
         assert "from_b" in types
+
+    def test_stale_instance_write_preserves_latest_state(self, tmp_path):
+        sc_path = str(tmp_path / ".sc")
+        a = Brain("tp", path=sc_path)
+        b = Brain("tp", path=sc_path)
+
+        a.set_target("T1")
+        b.learn("L1", evidence="e1")
+
+        c = Brain("tp", path=sc_path)
+        assert c.state["current_target"]["target"] == "T1"
+        assert len(c.state["works"]) == 1

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "shareclaw"
-version = "0.1.0"
+version = "0.2.0"
 description = "Shared memory + self-improving loops for multi-agent AI systems"
 readme = "README.md"
 license = {text = "MIT"}
