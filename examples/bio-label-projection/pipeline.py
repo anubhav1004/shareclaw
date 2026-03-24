@@ -133,6 +133,7 @@ def scientific_imports():
     try:
         import anndata  # type: ignore
         import numpy as np  # type: ignore
+        from sklearn.discriminant_analysis import LinearDiscriminantAnalysis  # type: ignore
         from sklearn.linear_model import LogisticRegression  # type: ignore
         from sklearn.metrics import (  # type: ignore
             accuracy_score,
@@ -141,7 +142,7 @@ def scientific_imports():
             precision_recall_fscore_support,
         )
         from sklearn.model_selection import GroupShuffleSplit, StratifiedShuffleSplit  # type: ignore
-        from sklearn.neighbors import KNeighborsClassifier  # type: ignore
+        from sklearn.neighbors import KNeighborsClassifier, NearestCentroid  # type: ignore
         from sklearn.pipeline import Pipeline  # type: ignore
         from sklearn.preprocessing import StandardScaler  # type: ignore
     except ImportError as exc:  # pragma: no cover - runtime guidance
@@ -153,6 +154,7 @@ def scientific_imports():
     return {
         "anndata": anndata,
         "np": np,
+        "LinearDiscriminantAnalysis": LinearDiscriminantAnalysis,
         "LogisticRegression": LogisticRegression,
         "accuracy_score": accuracy_score,
         "balanced_accuracy_score": balanced_accuracy_score,
@@ -161,6 +163,7 @@ def scientific_imports():
         "GroupShuffleSplit": GroupShuffleSplit,
         "StratifiedShuffleSplit": StratifiedShuffleSplit,
         "KNeighborsClassifier": KNeighborsClassifier,
+        "NearestCentroid": NearestCentroid,
         "Pipeline": Pipeline,
         "StandardScaler": StandardScaler,
     }

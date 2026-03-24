@@ -1,4 +1,4 @@
-"""Tests for the biology label projection helper module."""
+"""Tests for the biology label projection helpers and baseline script."""
 
 import importlib.util
 from pathlib import Path
@@ -6,11 +6,17 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 PIPELINE_PATH = ROOT / "examples" / "bio-label-projection" / "pipeline.py"
+RUN_BASELINE_PATH = ROOT / "examples" / "bio-label-projection" / "run_baseline.py"
 
 spec = importlib.util.spec_from_file_location("bio_pipeline", PIPELINE_PATH)
 bio_pipeline = importlib.util.module_from_spec(spec)
 assert spec.loader is not None
 spec.loader.exec_module(bio_pipeline)
+
+baseline_spec = importlib.util.spec_from_file_location("bio_run_baseline", RUN_BASELINE_PATH)
+bio_run_baseline = importlib.util.module_from_spec(baseline_spec)
+assert baseline_spec.loader is not None
+baseline_spec.loader.exec_module(bio_run_baseline)
 
 
 def test_official_dataset_url_uses_public_bucket():
@@ -42,3 +48,66 @@ def test_shared_label_summary_tracks_overlap_and_dropouts():
     assert summary["shared"] == ["b", "c"]
     assert summary["train_only"] == ["a"]
     assert summary["test_only"] == ["d"]
+
+
+def test_logistic_baseline_constructor_uses_supported_kwargs_only():
+    captured = {}
+
+    class FakeScaler:
+        def __init__(self):
+            captured["scaled"] = True
+
+    class FakeLogisticRegression:
+        def __init__(self, **kwargs):
+            captured["kwargs"] = kwargs
+
+    def fake_pipeline(*, steps):
+        captured["steps"] = steps
+        return {"steps": steps}
+
+    libs = {
+        "Pipeline": fake_pipeline,
+        "StandardScaler": FakeScaler,
+        "LogisticRegression": FakeLogisticRegression,
+    }
+
+    model = bio_run_baseline._model_from_name("logistic_regression", libs, seed=7)
+
+    assert model["steps"][0][0] == "scale"
+    assert model["steps"][1][0] == "model"
+    assert captured["kwargs"] == {
+        "max_iter": 500,
+        "solver": "lbfgs",
+        "random_state": 7,
+    }
+
+
+def test_lda_lsqr_constructor_uses_expected_shrinkage_setup():
+    captured = {}
+
+    class FakeScaler:
+        def __init__(self):
+            captured["scaled"] = True
+
+    class FakeLDA:
+        def __init__(self, **kwargs):
+            captured["kwargs"] = kwargs
+
+    def fake_pipeline(*, steps):
+        captured["steps"] = steps
+        return {"steps": steps}
+
+    libs = {
+        "Pipeline": fake_pipeline,
+        "StandardScaler": FakeScaler,
+        "LinearDiscriminantAnalysis": FakeLDA,
+    }
+
+    model = bio_run_baseline._model_from_name("lda_lsqr_auto", libs, seed=7)
+
+    assert model["steps"][0][0] == "scale"
+    assert model["steps"][1][0] == "model"
+    assert captured["kwargs"] == {
+        "solver": "lsqr",
+        "shrinkage": "auto",
+    }

@@ -12,6 +12,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from shareclaw import Brain
+from strategy import ROADMAP_LINKS, roadmap_payload, write_roadmap_json, write_roadmap_markdown
 
 
 SOURCES = {
@@ -22,6 +23,11 @@ SOURCES = {
     "zebrafish_dataset": "https://openproblems.bio/datasets/openproblems_v1/zebrafish",
     "gtex_v9_dataset": "https://openproblems.bio/datasets/cellxgene_census/gtex_v9",
     "immune_cell_atlas": "https://openproblems.bio/datasets/cellxgene_census/immune_cell_atlas",
+    "components_docs": ROADMAP_LINKS["components_docs"],
+    "getting_started": ROADMAP_LINKS["getting_started"],
+    "add_method": ROADMAP_LINKS["add_method"],
+    "create_pull_request": ROADMAP_LINKS["create_pull_request"],
+    "task_repo": ROADMAP_LINKS["task_repo"],
 }
 
 
@@ -78,6 +84,9 @@ def bootstrap(output_dir: Path, fresh: bool = False):
     (output_dir / "challenge_manifest.json").write_text(
         json.dumps(manifest, indent=2), encoding="utf-8"
     )
+    roadmap = roadmap_payload("zebrafish")
+    write_roadmap_json(output_dir / "winning_plan.json", dataset_key="zebrafish")
+    write_roadmap_markdown(output_dir / "winning_plan.md", dataset_key="zebrafish")
 
     brain.emit(
         "BIO_CHALLENGE_SELECTED",
@@ -124,38 +133,59 @@ def bootstrap(output_dir: Path, fresh: bool = False):
     )
     brain.resolve_consensus(decision_id, resolved_by="orchestrator")
 
-    task_ids = [
-        brain.create_task(
-            "Download and inspect the official Zebrafish label projection dataset",
-            priority="HIGH",
-            details="Validate schema, labels, and train/test split assumptions against Open Problems conventions.",
-            created_by="orchestrator",
+    second_decision_id = brain.start_consensus(
+        "When should the swarm escalate from lightweight baselines to a batch-robust latent model?",
+        options=["AFTER_LIGHTWEIGHT_PLATEAU", "IMMEDIATELY"],
+        created_by="orchestrator",
+        context=(
+            "Heavy models may help transfer across batches, but they should not crowd out simpler "
+            "baselines unless the lightweight path has clearly plateaued."
         ),
-        brain.create_task(
-            "Implement a reproducible baseline label projection pipeline",
-            priority="HIGH",
-            details="Start with a simple baseline before trying more sophisticated methods.",
-            created_by="orchestrator",
-        ),
-        brain.create_task(
-            "Define the experiment table for preprocessing and classifier sweeps",
-            priority="HIGH",
-            details="Track one variable at a time: normalization, HVGs, PCA dims, classifier, calibration.",
-            created_by="orchestrator",
-        ),
-        brain.create_task(
-            "Add error analysis by cell type and confusion hotspots",
-            priority="MED",
-            details="The swarm should learn which cell types remain hard and why.",
-            created_by="orchestrator",
-        ),
-        brain.create_task(
-            "Plan scale-up from Zebrafish to GTEx v9 after the baseline stabilizes",
-            priority="MED",
-            details="Do not scale until the first benchmark run is reproducible.",
-            created_by="orchestrator",
-        ),
-    ]
+    )
+    brain.vote(
+        second_decision_id,
+        agent="biology",
+        choice="AFTER_LIGHTWEIGHT_PLATEAU",
+        reason="We learn more from a disciplined baseline ladder than from jumping straight to heavy models.",
+        data="The challenge rewards reproducibility as much as novelty.",
+        confidence=0.9,
+    )
+    brain.vote(
+        second_decision_id,
+        agent="infra",
+        choice="AFTER_LIGHTWEIGHT_PLATEAU",
+        reason="The heavier path is justified only after simpler methods stop improving.",
+        data="This keeps iteration fast and packaging easier.",
+        confidence=0.94,
+    )
+    brain.vote(
+        second_decision_id,
+        agent="ambition",
+        choice="IMMEDIATELY",
+        reason="A batch-aware latent space may look more novel to reviewers and readers.",
+        data="Novelty is useful, but only after a trustworthy floor exists.",
+        confidence=0.52,
+    )
+    brain.resolve_consensus(second_decision_id, resolved_by="orchestrator")
+
+    task_ids = []
+    for cycle in roadmap["experiment_cycles"]:
+        priority = "HIGH" if cycle["cycle"] <= 6 else "MED"
+        details = (
+            f"Focus: {cycle['focus']}\n"
+            f"Change: {cycle['change']}\n"
+            f"Success gate: {cycle['success_gate']}\n"
+            f"Advance if win: {cycle['advance_if_win']}\n"
+            f"If it loses: {cycle['if_it_loses']}"
+        )
+        task_ids.append(
+            brain.create_task(
+                f"Cycle {cycle['cycle']}: {cycle['title']}",
+                priority=priority,
+                details=details,
+                created_by="orchestrator",
+            )
+        )
 
     brain.add_skill(
         "single-cell-error-analysis",
@@ -172,13 +202,44 @@ def bootstrap(output_dir: Path, fresh: bool = False):
         code="focus on per-cell-type precision/recall before changing model family",
         created_by="biology",
     )
+    brain.add_skill(
+        "benchmark-discipline",
+        description="Protect the benchmark from leakage and only promote methods that win with saved artifacts and reproducible validation.",
+        formula="leak-free split + one variable changed + full artifact logging + cross-dataset check before bragging",
+        examples_good=[
+            "Compare two heads on the same embedding and keep the artifacts.",
+            "Scale from Zebrafish to GTEx only after the local champion is stable.",
+        ],
+        examples_bad=[
+            "Tune directly against the hidden solution.",
+            "Change representation, model, and calibration all in the same cycle.",
+        ],
+        code="never claim a win without predictions.csv, metrics.json, class_metrics.csv, and report.md",
+        created_by="orchestrator",
+    )
 
-    brain.set_target("Establish a reproducible Zebrafish baseline with macro_f1 >= 0.75")
+    brain.set_target(
+        "Establish a reproducible Zebrafish baseline, improve it methodically, validate on GTEx, and package a PR-ready Open Problems method."
+    )
     brain.emit(
         "WORKSPACE_BOOTSTRAPPED",
-        {"task_count": len(task_ids), "decision_id": decision_id},
+        {
+            "task_count": len(task_ids),
+            "decision_ids": [decision_id, second_decision_id],
+            "winning_plan": "winning_plan.json",
+        },
         agent="orchestrator",
-        details="Created a ShareClaw workspace for the first biology benchmark example.",
+        details="Created a ShareClaw workspace with a competitive roadmap for the biology benchmark example.",
+    )
+    brain.emit(
+        "WINNING_PLAN_SEEDED",
+        {
+            "method_stages": len(roadmap["method_stack"]),
+            "experiment_cycles": len(roadmap["experiment_cycles"]),
+            "submission_steps": len(roadmap["submission_checklist"]),
+        },
+        agent="orchestrator",
+        details="Seeded the workspace with a staged method roadmap, experiment table, and submission checklist.",
     )
 
     summary = {
@@ -186,6 +247,11 @@ def bootstrap(output_dir: Path, fresh: bool = False):
         "tasks": [task["title"] for task in brain.list_tasks(limit=10)],
         "decisions": [decision["question"] for decision in brain.list_decisions(limit=10)],
         "events": [event["type"] for event in brain.get_events(limit=10)],
+        "winning_plan": {
+            "method_stages": len(roadmap["method_stack"]),
+            "experiment_cycles": len(roadmap["experiment_cycles"]),
+            "submission_steps": len(roadmap["submission_checklist"]),
+        },
     }
     (output_dir / "bootstrap_summary.json").write_text(
         json.dumps(summary, indent=2), encoding="utf-8"

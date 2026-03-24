@@ -80,7 +80,7 @@ In the current synthetic benchmark run:
 ```
 
 ```text
-6/ The repo is zero-dependency at runtime, ships with markdown mirrors for humans + agents, and has 67 passing tests.
+6/ The repo is zero-dependency at runtime, ships with markdown mirrors for humans + agents, and has 70 passing tests.
 
 Repo: https://github.com/anubhav1004/shareclaw
 ```

@@ -91,11 +91,17 @@ def test_bio_label_projection_bootstrap_script(tmp_path):
     assert "Biology benchmark workspace created." in result.stdout
     assert (output_dir / "challenge_manifest.json").exists()
     assert (output_dir / "bootstrap_summary.json").exists()
+    assert (output_dir / "winning_plan.json").exists()
+    assert (output_dir / "winning_plan.md").exists()
     assert (output_dir / ".shareclaw" / "shared_brain.md").exists()
 
     manifest = json.loads((output_dir / "challenge_manifest.json").read_text())
     assert manifest["challenge_name"] == "Open Problems Label Projection"
     assert manifest["starter_dataset"]["name"] == "Zebrafish embryonic cells"
+
+    winning_plan = json.loads((output_dir / "winning_plan.json").read_text())
+    assert len(winning_plan["experiment_cycles"]) == 10
+    assert winning_plan["method_stack"][0]["method_id"] == "pca_logistic_regression"
 
 
 def test_bio_label_projection_baseline_dry_run(tmp_path):
@@ -121,3 +127,47 @@ def test_bio_label_projection_baseline_dry_run(tmp_path):
     assert payload["dataset_key"] == "zebrafish"
     assert payload["feature_space"] == "pca"
     assert payload["model_name"] == "logistic_regression"
+
+
+def test_bio_label_projection_baseline_dry_run_with_lda(tmp_path):
+    output_dir = tmp_path / "bio-demo-output"
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(ROOT / "examples" / "bio-label-projection" / "run_baseline.py"),
+            "--workspace-dir",
+            str(output_dir),
+            "--dataset",
+            "zebrafish",
+            "--model",
+            "lda_lsqr_auto",
+            "--dry-run",
+        ],
+        cwd=ROOT,
+        env=_env(),
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+    payload = json.loads(result.stdout)
+    assert payload["model_name"] == "lda_lsqr_auto"
+
+
+def test_bio_label_projection_candidate_search_dry_run():
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(ROOT / "examples" / "bio-label-projection" / "search_task_candidates.py"),
+            "--dry-run",
+        ],
+        cwd=ROOT,
+        env=_env(),
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+    payload = json.loads(result.stdout)
+    assert payload["count"] >= 10
+    assert "logreg_balanced_c1" in payload["candidates"]

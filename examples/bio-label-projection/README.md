@@ -52,6 +52,17 @@ Agents coordinate on:
 - analyzing failure modes by cell type
 - deciding when to scale from Zebrafish to GTEx
 
+## Winning Plan
+
+This example now ships with a concrete competitive playbook, not just a baseline script.
+
+- Read the human playbook in `examples/bio-label-projection/WINNING_PLAN.md`
+- Bootstrap writes `winning_plan.md` and `winning_plan.json` into the workspace so both humans and agents can follow the same 10-cycle roadmap
+- The roadmap includes:
+  - the exact staged method stack to test first
+  - a one-variable-at-a-time experiment table for 10 cycles
+  - the current Open Problems method-submission checklist
+
 ## Run The Bootstrap
 
 ```bash
@@ -62,8 +73,9 @@ This creates a ShareClaw workspace in `examples/bio-label-projection/.demo-outpu
 
 - source links and challenge metadata
 - initial targets
-- queue items
-- a consensus decision
+- a 10-cycle winning plan in markdown and JSON
+- queue items aligned to that plan
+- consensus decisions about both dataset choice and when to escalate to heavier models
 - recommended next experiments
 
 ## Run The Baseline
@@ -99,8 +111,19 @@ What it does:
 - builds a batch-aware train/test split when possible
 - trains a baseline classifier
 - reports macro F1, accuracy, balanced accuracy, and per-class metrics
-- writes results to `results/zebrafish-logistic_regression-pca/`
+- writes results to `results/<dataset>-<model>-pca/`
 - logs the run back into the ShareClaw brain
+
+Current best measured Zebrafish run on our VM used `lda_lsqr_auto`:
+
+```bash
+python examples/bio-label-projection/run_baseline.py \
+  --dataset zebrafish \
+  --download-if-missing \
+  --model lda_lsqr_auto
+```
+
+That run reached `macro_f1=0.5401` on the current split, versus `0.3853` for the original logistic-regression baseline.
 
 For a no-data smoke check, you can resolve the run plan without importing scientific deps:
 

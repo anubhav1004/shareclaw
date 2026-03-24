@@ -30,7 +30,7 @@ Support it with this:
 - markdown mirrors that humans and agents can both read
 - runnable launch-swarm demo
 - benchmark showing ShareClaw-style improvement across cycles
-- 67 passing tests
+- 70 passing tests
 
 ## Demo Commands
 

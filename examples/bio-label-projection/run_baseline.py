@@ -44,7 +44,6 @@ def _model_from_name(model_name: str, libs, seed: int):
                     libs["LogisticRegression"](
                         max_iter=500,
                         solver="lbfgs",
-                        multi_class="auto",
                         random_state=seed,
                     ),
                 ),
@@ -55,6 +54,37 @@ def _model_from_name(model_name: str, libs, seed: int):
             steps=[
                 ("scale", libs["StandardScaler"]()),
                 ("model", libs["KNeighborsClassifier"](n_neighbors=15, weights="distance")),
+            ]
+        )
+    if model_name == "lda_svd":
+        return libs["Pipeline"](
+            steps=[
+                ("scale", libs["StandardScaler"]()),
+                ("model", libs["LinearDiscriminantAnalysis"](solver="svd")),
+            ]
+        )
+    if model_name == "lda_lsqr_auto":
+        return libs["Pipeline"](
+            steps=[
+                ("scale", libs["StandardScaler"]()),
+                (
+                    "model",
+                    libs["LinearDiscriminantAnalysis"](solver="lsqr", shrinkage="auto"),
+                ),
+            ]
+        )
+    if model_name == "nearest_centroid":
+        return libs["Pipeline"](
+            steps=[
+                ("scale", libs["StandardScaler"]()),
+                ("model", libs["NearestCentroid"]()),
+            ]
+        )
+    if model_name == "nearest_centroid_shrink_0_1":
+        return libs["Pipeline"](
+            steps=[
+                ("scale", libs["StandardScaler"]()),
+                ("model", libs["NearestCentroid"](shrink_threshold=0.1)),
             ]
         )
     raise ValueError(f"Unsupported model: {model_name}")
@@ -312,7 +342,10 @@ def run_baseline(
             f"Split strategy was {split_strategy}; shared label count was {len(label_summary['shared'])}; "
             f"feature space was {feature_space}"
         ),
-        next_action="Compare logistic_regression vs knn, then sweep PCA dimensions and batch-aware splits.",
+        next_action=(
+            "Compare lda_svd, lda_lsqr_auto, and nearest_centroid against logistic_regression, "
+            "then sweep PCA dimensions and batch-aware splits."
+        ),
         next_target=f"Increase macro_f1 to at least {max(metrics['macro_f1'] + 0.03, record['default_target']):.2f}",
     )
     brain.emit(
@@ -382,7 +415,14 @@ def main():
     parser.add_argument(
         "--model",
         default="logistic_regression",
-        choices=["logistic_regression", "knn"],
+        choices=[
+            "logistic_regression",
+            "knn",
+            "lda_svd",
+            "lda_lsqr_auto",
+            "nearest_centroid",
+            "nearest_centroid_shrink_0_1",
+        ],
         help="Baseline classifier.",
     )
     parser.add_argument(
